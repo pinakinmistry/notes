@@ -1,0 +1,42 @@
+- What are the 7 data types in JavaScript?
+//Don't say var, else you have to say it 7 times and still u will be wrong
+
+- What are n different ways to alter this?
+call
+apply
+bind
+
+- Effect of double bind?
+
+- setTimeout(callMe, 1000);
+
+- Why is arguments object removed in ES6?
+
+- Arrange these in cronological order:
+Angular
+Backbone
+Dojo
+Ember
+ExtJS
+GWT
+Meteor
+React
+
+- What are the code names of Angular 1.0, 1.1, 1.2 and 1.4 versions?
+
+- Name of query language that can written directly in our view?
+How can we write HTML in JavaScript?
+What is the new React app framework that facebook is coming up with?
+//Components/sub components declare what data they want and Relay is resolve it automatically
+//solves overfetching, underfetching data issues
+
+- Where all Xebia offices are located?
+
+- Pluto's demotion from Planetary status
+Mission?
+Date?
+Start date?
+Distance?
+Moon's name?
+How many moons?
+

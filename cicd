@@ -1,0 +1,172 @@
+Project TA-1-build:
+
+1. Install dependecies (npm install, bower install)
+2. Run unit tests (gulp test)
+3. Run build (gulp build)
+4. Create docker image (docker build -t org/app-name directory)
+5. Tag the image
+6. Push the image to registry
+7. Remove version lastest ?
+8. Tag the repo
+9. Summarize whats done
+
+Strategy: Log Rotation
+Repository URL ssh://git@stash.zd.nl:7999/zd5/zd-transaction-application.git
+Creds: jenkins
+Branches to build: origin/master
+Branch specifier: :.*[_-]hotfix
+
+Build Triggers
+Poll SCM 
+Schedule: *****
+
+Build Environment
+Add timestamps to the Console Output
+Color ANSI Console Output
+    ANSI color map: xterm
+Inject environment variables to the build process
+Properties Content: ORACLE_HOST=testoracle.zd.local
+
+Build
+Execute shell
+Command: git -C /home/jenkins/zd-orchestration/ pull
+
+Command:
+cd ${WORKSPACE}
+./build.sh
+
+build.sh:
+#!/bin/sh
+set -e
+
+npm install
+bower install
+
+# Run tests
+node_modules/gulp/bin/gulp.js test
+
+# Make release build
+node_modules/gulp/bin/gulp.js build
+
+# Create docker
+cd deploy
+DIR="$( cd "$( dirname "${0}" )" && pwd )"
+echo ${DIR}
+rm -rf ${DIR}/dist
+cp -a ${DIR}/../dist ${DIR}
+docker build -t zorgdomein/zd-transaction-application ${DIR}
+
+# TODO: Return exit code
+
+
+Command:
+ansible-playbook -i /home/jenkins/zd-orchestration/zd-inventory.ini /home/jenkins/zd-orchestration/scripts/build-component.yml --extra-vars "docker_images=['zorgdomein/zd-transaction-application','zorgdomein/zd-mock-server','zorgdomein/zd-mock-proxy'] work_dir=${WORKSPACE}"
+
+
+Test report:
+XML: web/test/report/results.xml
+
+Health report amplification factor: 1.0
+
+Archive the artifacts:
+Files to archive: web/test/report/coverage/html/**/*.*
+
+Trigger paramerized build on other projects:
+Projects to build: TA-2-deploy
+Trigger when build is: stable or unstable but not failed
+
+Parameters from properties file:
+Use properties from file: build-component.tmp
+
+Predefined parameters:
+Parameters: GIT_BRANCH=$GIT_BRANCH
+
+Projects to build: MON-TA
+Trigger when build is: Failed
+Trigger build without parameters: yes
+Predefined parameters: GIT_BRANCH=$GIT_BRANCH
+
+Publish html reports:
+HTML directive to arhive: web/test/report/coverage/html/phantomjs/
+Index page: index.html
+Report: Code coverage
+
+
+Project TA-2-deploy: 
+
+Execute shell:
+ansible-playbook -i /home/jenkins/zd-orchestration/zd-inventory.ini --vault-password-file /home/jenkins/.vault_pass /home/jenkins/zd-orchestration/environments/ta/environment.yml --extra-vars "zd_transaction_application_version=${VERSION} restart_all=${RESTART_ALL}"
+
+1. Pull, stop, remove, start containers (syslog-ng, collectd, rollator)
+2. Pull, stop, remove, start app containers (zd-transition-application, zd-mock-proxy, zd-mock-server)
+
+
+Project TA-3-test:
+Execute shell:
+if [ ! -f BrowserStackLocal ]; then
+echo "BrowserStackLocal is not present downloading..."
+curl -s http://jenkins:jenkins@dev.awfs.nl/artifactory/ext-release-local/BrowserStackLocal-linux-x64.zip --output BrowserStackLocal.zip
+unzip BrowserStackLocal.zip
+fi
+
+echo "Start BrowserStackLocal"
+nohup ./BrowserStackLocal Fqm1sLQZgADW3AwAesJw ta.zorgdomein.local,80,0 &
+sleep 3 #short sleep to wait for tool start
+
+ps fax | grep BrowserStackLocal
+
+Project TA-3-test-chrome:
+
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-chrome.sh
+
+Project TA-3-test-firefox:
+
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-firefox.sh
+
+Project TA-3-test-ie8:
+
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-ie8.sh
+
+Project TA-3-test-ie9:
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-ie9.sh
+
+Project TA-3-test-ie10:
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-ie10.sh
+
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-ie10.sh
+
+Project TA-3-test-ie11:
+echo "Run viewtests on version ${VERSION}"
+cd viewtest
+./viewtest-ie11.sh
+
+Project TA-3-test-end:
+echo "Kill BrowserStackLocal"
+pkill -f BrowserStackLocal
+echo "Is BrowserStackLocal gone?"
+ps fax | grep BrowserStackLocal
+
+Project TA-4-release:
+Updates component and its version number in composition.yml file
+#!/bin/bash
+if [[ ! "$GIT_BRANCH" =~ ^.*[_-]hotfix ]]; then
+ ansible-playbook -i ${WORKSPACE}/zd-inventory.ini ${WORKSPACE}/scripts/release-component.yml --extra-vars "component_name=zd-transaction-application version=${VERSION} work_dir=${WORKSPACE}"
+else
+ echo 'Skipping automatic release of hotfix'
+fi
+
+Project team-lime-deploy:
+ansible-playbook -i /home/jenkins/zd-orchestration/zd-inventory.ini --vault-password-file /home/jenkins/.vault_pass /home/jenkins/zd-orchestration/environments/lime/environment.yml --extra-vars "restart_all=${RESTART_ALL}"
+
